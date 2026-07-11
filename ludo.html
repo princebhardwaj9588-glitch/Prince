@@ -3,290 +3,366 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arrow Puzzle Game</title>
+    <title>Tap Away: Arrow Puzzle</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         body {
             margin: 0;
             padding: 0;
-            background: radial-gradient(circle, #2980b9, #2c3e50);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #25a2ff;
+            /* स्क्रीनशॉट जैसा सनबर्स्ट/रे इफेक्ट background */
+            background-image: repeating-conical-gradient(from 0deg, #30a9ff 0deg 10deg, #1fa0ff 10deg 20deg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             color: white;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             overflow: hidden;
+            user-select: none;
         }
 
-        #game-container {
-            width: 90%;
-            max-width: 450px;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        #game-wrapper {
+            width: 100%;
+            max-width: 400px;
             text-align: center;
-            border: 2px solid rgba(255,255,255,0.2);
-            position: relative;
+            padding: 20px;
         }
 
-        .header {
+        h1 {
+            font-size: 36px;
+            margin: 0 0 5px 0;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .status-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            max-width: 340px;
+            margin: 0 auto 15px auto;
             font-size: 18px;
             font-weight: bold;
         }
 
         .lives {
-            color: #ff4757;
             font-size: 22px;
+            letter-spacing: 2px;
+        }
+
+        /* स्क्रीनशॉट जैसा सफेद चौकोर कार्ड */
+        .card {
+            background: white;
+            border-radius: 24px;
+            padding: 25px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+            margin: 0 auto 25px auto;
+            width: 300px;
+            height: 300px;
+            position: relative;
         }
 
         #puzzle-board {
             width: 100%;
-            height: 350px;
-            background: #ffffff;
-            border-radius: 15px;
+            height: 100%;
             position: relative;
-            overflow: hidden;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
         }
 
-        .arrow {
+        /* मुड़े हुए रास्तों (Arrows) की स्टाइल */
+        .arrow-path {
             position: absolute;
-            height: 6px;
-            background-color: #1e3799;
-            border-radius: 3px;
+            background: transparent;
             cursor: pointer;
-            transition: transform 0.5s ease-out, opacity 0.5s ease-out;
-            transform-origin: left center;
+            transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.5s ease;
+        }
+
+        /* अंदर की डार्क नीली रेखा */
+        .arrow-line {
+            position: absolute;
+            background-color: #0f1c3f;
+            border-radius: 4px;
         }
 
         /* तीर की नोक (Arrow Head) */
-        .arrow::after {
-            content: '';
+        .arrow-head {
             position: absolute;
-            right: -2px;
-            top: -5px;
             width: 0;
             height: 0;
-            border-top: 8px solid transparent;
-            border-bottom: 8px solid transparent;
-            border-left: 12px solid #1e3799;
+            border-style: solid;
         }
 
-        .footer-btn {
-            margin-top: 20px;
-            padding: 12px 30px;
-            background: #20bf6b;
+        /* 4 दिशाओं के लिए हेड स्टाइल */
+        .head-right {
+            border-width: 7px 0 7px 11px;
+            border-color: transparent transparent transparent #0f1c3f;
+        }
+        .head-left {
+            border-width: 7px 11px 7px 0;
+            border-color: transparent #0f1c3f transparent transparent;
+        }
+        .head-up {
+            border-width: 0 7px 11px 7px;
+            border-color: transparent transparent #0f1c3f transparent;
+        }
+        .head-down {
+            border-width: 11px 7px 0 7px;
+            border-color: #0f1c3f transparent transparent transparent;
+        }
+
+        /* स्क्रीनशॉट जैसा 'New Game' बटन */
+        .btn-main {
+            background: white;
+            color: #0076ff;
             border: none;
-            border-radius: 25px;
-            color: white;
-            font-size: 18px;
+            padding: 16px 0;
+            width: 85%;
+            max-width: 320px;
+            border-radius: 30px;
+            font-size: 20px;
             font-weight: bold;
             cursor: pointer;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            display: none;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            transition: transform 0.1s;
+        }
+        .btn-main:active {
+            transform: scale(0.97);
         }
 
-        .footer-btn:hover {
-            background: #2bcbba;
-        }
-
-        /* जीत या हार की स्क्रीन */
-        #screen-overlay {
+        /* सेलिब्रेशन/ओवरले स्क्रीन */
+        #overlay {
             display: none;
-            position: absolute;
+            position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            border-radius: 20px;
+            background: rgba(37, 162, 255, 0.95);
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 10;
+            z-index: 100;
         }
 
-        #screen-overlay h2 {
-            font-size: 28px;
-            margin-bottom: 15px;
+        #overlay h2 {
+            font-size: 38px;
+            margin-bottom: 30px;
+            text-shadow: 0 3px 6px rgba(0,0,0,0.2);
         }
     </style>
 </head>
 <body>
 
-    <div id="game-container">
-        <div class="header">
-            <div id="level-indicator">Level: 1</div>
-            <div class="lives" id="lives-display">❤️❤️❤️</div>
-        </div>
+    <div id="game-wrapper">
+        <h1 id="game-title">Train Your Brain</h1>
         
-        <h2 style="margin: 0 0 15px 0; font-size: 20px; color: #f1c40f;">Find the Free Path!</h2>
-
-        <div id="puzzle-board">
-            <!-- तीरों को जावास्क्रिप्ट द्वारा यहाँ लोड किया जाएगा -->
+        <div class="status-bar">
+            <div id="level-txt">Level 1</div>
+            <div class="lives" id="lives-txt">❤️❤️❤️</div>
         </div>
 
-        <button class="footer-btn" id="next-level-btn" onclick="nextLevel()">Next Level</button>
-        
-        <!-- गेम ओवर / जीत स्क्रीन -->
-        <div id="screen-overlay">
-            <h2 id="overlay-title">Level Completed!</h2>
-            <button class="footer-btn" id="overlay-btn" style="display:block;" onclick="restartGame()">Play Again</button>
+        <div class="card">
+            <div id="puzzle-board"></div>
         </div>
+
+        <button class="btn-main" id="action-btn" onclick="checkButtonClick()">Tap To Start</button>
+    </div>
+
+    <div id="overlay">
+        <h2 id="overlay-msg">Level Completed!</h2>
+        <button class="btn-main" id="overlay-btn" onclick="closeOverlay()">Next Level</button>
     </div>
 
     <script>
-        // लेवल्स का डेटा (तीरों की पोजीशन, दिशा और उनके रास्ते में रुकावट डालने वाले तीर)
-        // id: तीर का नाम, x/y: बोर्ड पर पोजीशन, length: लंबाई, angle: दिशा (0=Right, 90=Down, 180=Left, 270=Up)
-        // blocks: उन तीरों की IDs जो इसके रास्ते में बाधा हैं। जब वो हटेंगे तभी यह हट पाएगा।
+        // लेवल्स डेटा: स्क्रीनशॉट की तरह मुड़े हुए (L-shape/Z-shape) रास्तों का डिज़ाइन
+        // 'lines' में हर लाइन का हिस्सा है [x, y, width, height]
+        // 'head' तीर की नोक की स्थिति [x, y, direction] तय करता है
+        // 'dir' वो दिशा है जिसमें तीर भागता है ('U', 'D', 'L', 'R')
         const levels = [
-            // LEVEL 1 (आसान - 3 तीर)
+            // LEVEL 1: शुरुआती 3 टेढ़े-मेढ़े तीर
             [
-                { id: 'A', x: 50, y: 100, length: 200, angle: 0, blocks: ['B'] }, // B इसके आगे खड़ा है
-                { id: 'B', x: 250, y: 50, length: 200, angle: 90, blocks: [] },   // यह बिल्कुल फ्री है
-                { id: 'C', x: 100, y: 200, length: 200, angle: 0, blocks: ['B'] }  // B इसके आगे भी है
+                { id: 'A', dir: 'U', head: [100, 20, 'U'], lines: [[100,20,8,120], [100,140,80,8]], blocks: ['B'] }, 
+                { id: 'B', dir: 'R', head: [220, 80, 'R'], lines: [[60,80,160,8]], blocks: [] }, // फ्री रास्ता
+                { id: 'C', dir: 'D', head: [40, 240, 'D'], lines: [[40,100,8,140], [40,100,100,8]], blocks: ['B'] }
             ],
-            // LEVEL 2 (मध्यम - 5 तीर)
+            // LEVEL 2: चक्रव्यूह जैसा डिज़ाइन
             [
-                { id: 'A', x: 50, y: 80, length: 250, angle: 0, blocks: ['C'] },
-                { id: 'B', x: 80, y: 280, length: 200, angle: 270, blocks: ['A'] },
-                { id: 'C', x: 300, y: 40, length: 250, angle: 90, blocks: [] }, // फ्री तीर
-                { id: 'D', x: 50, y: 200, length: 250, angle: 0, blocks: ['C', 'E'] },
-                { id: 'E', x: 200, y: 120, length: 200, angle: 90, blocks: [] } // फ्री तीर
+                { id: 'A', dir: 'R', head: [240, 50, 'R'], lines: [[50,50,190,8], [50,50,8,80]], blocks: ['B'] },
+                { id: 'B', dir: 'D', head: [120, 220, 'D'], lines: [[120,80,8,140], [120,80,80,8]], blocks: ['C'] },
+                { id: 'C', dir: 'L', head: [30, 150, 'L'], lines: [[30,150,200,8]], blocks: [] }, // फ्री रास्ता
+                { id: 'D', dir: 'U', head: [200, 30, 'U'], lines: [[200,30,8,180]], blocks: ['A'] }
             ],
-            // LEVEL 3 (कठिन - इंटरलॉकिंग चक्र)
+            // LEVEL 3: कठिन इंटरलॉकिंग (स्क्रीनशॉट की तरह उलझा हुआ)
             [
-                { id: 'A', x: 50, y: 80, length: 250, angle: 0, blocks: ['B'] },
-                { id: 'B', x: 300, y: 50, length: 250, angle: 90, blocks: ['C'] },
-                { id: 'C', x: 350, y: 280, length: 250, angle: 180, blocks: ['D'] },
-                { id: 'D', x: 100, y: 320, length: 250, angle: 270, blocks: [] }, // सिर्फ यह फ्री है, इसे निकालने से पूरा चक्र खुलेगा
-                { id: 'E', x: 150, y: 180, length: 150, angle: 0, blocks: ['B'] }
+                { id: 'A', dir: 'L', head: [30, 60, 'L'], lines: [[30,60,200,8], [230,60,8,100]], blocks: ['B'] },
+                { id: 'B', dir: 'U', head: [100, 20, 'U'], lines: [[100,20,8,220]], blocks: ['C'] },
+                { id: 'C', dir: 'R', head: [250, 200, 'R'], lines: [[50,200,200,8], [50,120,8,80]], blocks: [] }, // फ्री रास्ता
+                { id: 'D', dir: 'D', head: [160, 250, 'D'], lines: [[160,80,8,170], [80,80,80,8]], blocks: ['B'] }
             ]
         ];
 
         let currentLevel = 0;
         let remainingArrows = [];
         let lives = 3;
+        let isGameOver = false;
 
         const board = document.getElementById('puzzle-board');
-        const levelIndicator = document.getElementById('level-indicator');
-        const livesDisplay = document.getElementById('lives-display');
-        const overlay = document.getElementById('screen-overlay');
-        const overlayTitle = document.getElementById('overlay-title');
+        const levelTxt = document.getElementById('level-txt');
+        const livesTxt = document.getElementById('lives-txt');
+        const actionBtn = document.getElementById('action-btn');
+        const overlay = document.getElementById('overlay');
+        const overlayMsg = document.getElementById('overlay-msg');
         const overlayBtn = document.getElementById('overlay-btn');
 
-        function loadLevel(levelIndex) {
-            board.innerHTML = '';
-            overlay.style.display = 'none';
-            levelIndicator.innerText = `Level: ${levelIndex + 1}`;
-            
-            // वर्तमान लेवल के तीरों की कॉपी बनाना
-            remainingArrows = JSON.parse(JSON.stringify(levels[levelIndex]));
-
-            remainingArrows.forEach(arrow => {
-                const el = document.createElement('div');
-                el.className = 'arrow';
-                el.id = `arrow-${arrow.id}`;
-                el.style.left = `${arrow.x}px`;
-                el.style.top = `${arrow.y}px`;
-                el.style.width = `${arrow.length}px`;
-                el.style.transform = `rotate(${arrow.angle}deg)`;
-                
-                // क्लिक इवेंट
-                el.onclick = () => handleArrowClick(arrow.id);
-                
-                board.appendChild(el);
-            });
-        }
-
-        function handleArrowClick(arrowId) {
-            const arrowIndex = remainingArrows.findIndex(a => a.id === arrowId);
-            const arrow = remainingArrows[arrowIndex];
-
-            // जांचें कि क्या कोई अन्य तीर इसका रास्ता रोक रहा है
-            if (arrow.blocks.length === 0) {
-                // सही जवाब: तीर को स्क्रीन से बाहर भेजें (Fly away)
-                const el = document.getElementById(`arrow-${arrowId}`);
-                
-                // दिशा के हिसाब से बाहर भेजें
-                let moveX = 0, moveY = 0;
-                if (arrow.angle === 0) moveX = 500;
-                else if (arrow.angle === 90) moveY = 500;
-                else if (arrow.angle === 180) moveX = -500;
-                else if (arrow.angle === 270) moveY = -500;
-
-                el.style.transform = `rotate(${arrow.angle}deg) translate(${moveX}px, ${moveY}px)`;
-                el.style.opacity = '0';
-                el.style.pointerEvents = 'none';
-
-                // बचे हुए तीरों की ब्लॉकिंग लिस्ट में से इस तीर को हटाएं
-                remainingArrows.forEach(a => {
-                    a.blocks = a.blocks.filter(id => id !== arrowId);
-                });
-
-                // इस तीर को लिस्ट से हटाएं
-                remainingArrows.splice(arrowIndex, 1);
-
-                // जांचें कि क्या लेवल पूरा हो गया
-                if (remainingArrows.length === 0) {
-                    setTimeout(() => {
-                        levelComplete();
-                    }, 600);
-                }
-            } else {
-                // गलत जवाब: लाइफ कम करें और झटका (shake) दें
-                lives--;
-                updateLivesDisplay();
-                
-                const el = document.getElementById(`arrow-${arrowId}`);
-                el.style.backgroundColor = '#ff4757';
-                setTimeout(() => el.style.backgroundColor = '#1e3799', 300);
-
-                if (lives <= 0) {
-                    gameOver();
-                }
-            }
-        }
-
-        function updateLivesDisplay() {
-            livesDisplay.innerText = '❤️'.repeat(lives) + '🖤'.repeat(3 - lives);
-        }
-
-        function levelComplete() {
-            if (currentLevel < levels.length - 1) {
-                overlayTitle.innerText = "🎉 Level Completed!";
-                overlayBtn.innerText = "Next Level";
-                overlayBtn.onclick = () => {
-                    currentLevel++;
-                    loadLevel(currentLevel);
-                };
-            } else {
-                overlayTitle.innerText = "🏆 You Beat the Game!";
-                overlayBtn.innerText = "Restart Game";
-                overlayBtn.onclick = () => restartGame();
-            }
-            overlay.style.display = 'flex';
-        }
-
-        function gameOver() {
-            overlayTitle.innerText = "❌ Game Over!";
-            overlayBtn.innerText = "Try Again";
-            overlayBtn.onclick = () => restartGame();
-            overlay.style.display = 'flex';
-        }
-
-        function restartGame() {
+        function initGame() {
             lives = 3;
-            currentLevel = 0;
-            updateLivesDisplay();
+            isGameOver = false;
+            updateUI();
             loadLevel(currentLevel);
         }
 
+        function loadLevel(lvlIdx) {
+            board.innerHTML = '';
+            levelTxt.innerText = `Level ${lvlIdx + 1}`;
+            actionBtn.innerText = "Reset Level";
+            
+            remainingArrows = JSON.parse(JSON.stringify(levels[lvlIdx]));
+
+            remainingArrows.forEach(arrow => {
+                // मुख्य कंटेनर
+                const pathEl = document.createElement('div');
+                pathEl.className = 'arrow-path';
+                pathEl.id = `arrow-${arrow.id}`;
+                pathEl.style.width = '100%';
+                pathEl.style.height = '100%';
+                
+                // मुड़ी हुई लाइनें बनाना
+                arrow.lines.forEach(line => {
+                    const lineEl = document.createElement('div');
+                    lineEl.className = 'arrow-line';
+                    lineEl.style.left = `${line[0]}px`;
+                    lineEl.style.top = `${line[1]}px`;
+                    lineEl.style.width = `${line[2]}px`;
+                    lineEl.style.height = `${line[3]}px`;
+                    pathEl.appendChild(lineEl);
+                });
+
+                // तीर की नोक (Head) बनाना
+                const headEl = document.createElement('div');
+                headEl.className = `arrow-head`;
+                
+                let hx = arrow.head[0];
+                let hy = arrow.head[1];
+                
+                if(arrow.head[2] === 'R') { headEl.classList.add('head-right'); hy -= 3; }
+                if(arrow.head[2] === 'L') { headEl.classList.add('head-left'); hy -= 3; hx -= 11; }
+                if(arrow.head[2] === 'U') { headEl.classList.add('head-up'); hx -= 3; hy -= 11; }
+                if(arrow.head[2] === 'D') { headEl.classList.add('head-down'); hx -= 3; }
+
+                headEl.style.left = `${hx}px`;
+                headEl.style.top = `${hy}px`;
+                pathEl.appendChild(headEl);
+
+                // क्लिक इवेंट
+                pathEl.onclick = (e) => {
+                    e.stopPropagation();
+                    handleArrowTap(arrow.id);
+                };
+
+                board.appendChild(pathEl);
+            });
+        }
+
+        function handleArrowTap(id) {
+            if (isGameOver) return;
+            
+            const idx = remainingArrows.findIndex(a => a.id === id);
+            const arrow = remainingArrows[idx];
+
+            // अगर रास्ता साफ है (कोई ब्लॉकिंग तीर नहीं बचा)
+            if (arrow.blocks.length === 0) {
+                const el = document.getElementById(`arrow-${id}`);
+                
+                // सही दिशा में बाहर भेजने का लॉजिक (Fly straight in arrow direction)
+                let tx = 0, ty = 0;
+                if (arrow.dir === 'R') tx = 400;
+                if (arrow.dir === 'L') tx = -400;
+                if (arrow.dir === 'U') ty = -400;
+                if (arrow.dir === 'D') ty = 400;
+
+                el.style.transform = `translate(${tx}px, ${ty}px)`;
+                el.style.opacity = '0';
+                el.style.pointerEvents = 'none';
+
+                // दूसरों के रास्ते से इस बाधा को हटाओ
+                remainingArrows.forEach(a => {
+                    a.blocks = a.blocks.filter(bId => bId !== id);
+                });
+
+                remainingArrows.splice(idx, 1);
+
+                // अगर सारे तीर गायब हो गए -> जीत गए!
+                if (remainingArrows.length === 0) {
+                    setTimeout(triggerWin, 400);
+                }
+            } else {
+                // गलत तीर: झटका (Wrong shake animation)
+                const el = document.getElementById(`arrow-${id}`);
+                el.style.transform = 'scale(0.95)';
+                setTimeout(() => el.style.transform = 'scale(1)', 150);
+                
+                lives--;
+                updateUI();
+                if (lives <= 0) triggerGameOver();
+            }
+        }
+
+        function updateUI() {
+            livesTxt.innerText = '❤️'.repeat(lives) + '🖤'.repeat(3 - lives);
+        }
+
+        // स्क्रीनशॉट जैसा शानदार सेलिब्रेशन (Confetti effect)
+        function triggerWin() {
+            confetti({
+                particleCount: 150,
+                spread: 80,
+                origin: { y: 0.6 }
+            });
+
+            setTimeout(() => {
+                if (currentLevel < levels.length - 1) {
+                    overlayMsg.innerText = "Level Completed!";
+                    overlayBtn.innerText = "Next Level";
+                } else {
+                    overlayMsg.innerText = "You Brainiac! Game Beaten! 🎉";
+                    overlayBtn.innerText = "Play Again";
+                }
+                overlay.style.display = 'flex';
+            }, 500);
+        }
+
+        function triggerGameOver() {
+            isGameOver = true;
+            overlayMsg.innerText = "Brain Locked! ❌";
+            overlayBtn.innerText = "Try Again";
+            overlay.style.display = 'flex';
+        }
+
+        function closeOverlay() {
+            overlay.style.display = 'none';
+            if (lives <= 0 || currentLevel === levels.length - 1) {
+                currentLevel = 0;
+                initGame();
+            } else {
+                currentLevel++;
+                lives = 3;
+                updateUI();
+                loadLevel(currentLevel);
+            }
+        }
+
+        function checkButtonClick() {
+            initGame();
+        }
+
         // गेम शुरू करें
-        loadLevel(currentLevel);
+        initGame();
     </script>
 </body>
 </html>
